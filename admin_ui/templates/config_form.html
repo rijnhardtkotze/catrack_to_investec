@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} - Configuration{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="fas fa-cog"></i> {{ title }}
+    </h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{{ url_for('config_list') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Back to List
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-body">
+                <form method="POST">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="mb-3">
+                        {{ form.name.label(class="form-label") }}
+                        {{ form.name(class="form-control") }}
+                        {% if form.name.errors %}
+                            <div class="text-danger small">
+                                {% for error in form.name.errors %}
+                                    <div>{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">
+                            Configuration setting name (e.g., "rate_per_km", "cartrack_username")
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.value.label(class="form-label") }}
+                        {{ form.value(class="form-control", rows="3") }}
+                        {% if form.value.errors %}
+                            <div class="text-danger small">
+                                {% for error in form.value.errors %}
+                                    <div>{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">
+                            Configuration value. For JSON objects, ensure proper formatting.
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.description.label(class="form-label") }}
+                        {{ form.description(class="form-control", rows="2") }}
+                        {% if form.description.errors %}
+                            <div class="text-danger small">
+                                {% for error in form.description.errors %}
+                                    <div>{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">
+                            Optional description of what this configuration controls
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> 
+                            {% if config %}Update{% else %}Create{% endif %} Configuration
+                        </button>
+                        <a href="{{ url_for('config_list') }}" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="fas fa-info-circle"></i> Configuration Guidelines</h6>
+            </div>
+            <div class="card-body">
+                <h6>Common Configuration Names:</h6>
+                <ul class="small">
+                    <li><code>rate_per_km</code> - Cost per kilometer (e.g., "0.25")</li>
+                    <li><code>cartrack_username</code> - CarTrack API username</li>
+                    <li><code>cartrack_password</code> - CarTrack API password</li>
+                    <li><code>investec_client_id</code> - Investec API client ID</li>
+                    <li><code>investec_secret_key</code> - Investec API secret</li>
+                    <li><code>investec_api_key</code> - Investec API key</li>
+                    <li><code>default_registration</code> - Default vehicle registration</li>
+                </ul>
+                
+                <hr>
+                
+                <h6>Security Tips:</h6>
+                <ul class="small">
+                    <li>Never store sensitive data in plain text in production</li>
+                    <li>Use AWS Secrets Manager for production credentials</li>
+                    <li>Regularly rotate API keys and passwords</li>
+                    <li>Monitor access logs for unauthorized changes</li>
+                </ul>
+                
+                <hr>
+                
+                <h6>Value Formats:</h6>
+                <ul class="small">
+                    <li><strong>String:</strong> Plain text values</li>
+                    <li><strong>Number:</strong> 0.25, 100, -5.5</li>
+                    <li><strong>Boolean:</strong> true, false</li>
+                    <li><strong>JSON:</strong> {"key": "value"}</li>
+                </ul>
+            </div>
+        </div>
+        
+        {% if config %}
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="fas fa-history"></i> Configuration History</h6>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled small">
+                    <li>
+                        <strong>Created:</strong> {{ config.created_at.strftime('%Y-%m-%d %H:%M') }}
+                    </li>
+                    <li>
+                        <strong>Last Updated:</strong> {{ config.updated_at.strftime('%Y-%m-%d %H:%M') }}
+                    </li>
+                </ul>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}

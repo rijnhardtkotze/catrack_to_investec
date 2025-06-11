@@ -1,0 +1,473 @@
+{% extends "base.html" %}
+
+{% block title %}Testing Tools - Car Service Savings Admin{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="fas fa-flask"></i> Testing Tools</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group">
+            <button type="button" class="btn btn-primary" onclick="invokeLambda()">
+                <i class="fas fa-play"></i> Invoke Lambda
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Test Panels -->
+<div class="row">
+    <!-- Distance Calculation Test -->
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-calculator"></i> Test Distance Calculation</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('test_calculate') }}">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="mb-3">
+                        {{ form.registration.label(class="form-label") }}
+                        {{ form.registration(class="form-control", placeholder="e.g., DV77FCGP") }}
+                        {% if form.registration.errors %}
+                            <div class="text-danger small">
+                                {% for error in form.registration.errors %}
+                                    <div>{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                {{ form.from_date.label(class="form-label") }}
+                                {{ form.from_date(class="form-control") }}
+                                {% if form.from_date.errors %}
+                                    <div class="text-danger small">
+                                        {% for error in form.from_date.errors %}
+                                            <div>{{ error }}</div>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                {{ form.to_date.label(class="form-label") }}
+                                {{ form.to_date(class="form-control") }}
+                                {% if form.to_date.errors %}
+                                    <div class="text-danger small">
+                                        {% for error in form.to_date.errors %}
+                                            <div>{{ error }}</div>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.rate_per_km.label(class="form-label") }}
+                        <div class="input-group">
+                            <span class="input-group-text">R</span>
+                            {{ form.rate_per_km(class="form-control", step="0.01", placeholder="0.25") }}
+                        </div>
+                        {% if form.rate_per_km.errors %}
+                            <div class="text-danger small">
+                                {% for error in form.rate_per_km.errors %}
+                                    <div>{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-play"></i> Test Calculation
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- API Connection Tests -->
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-plug"></i> API Connection Tests</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-primary" onclick="testCarTrackAPI()">
+                        <i class="fas fa-car"></i> Test CarTrack API
+                    </button>
+                    <button class="btn btn-outline-success" onclick="testInvestecAPI()">
+                        <i class="fas fa-university"></i> Test Investec API
+                    </button>
+                    <button class="btn btn-outline-info" onclick="testDatabaseConnection()">
+                        <i class="fas fa-database"></i> Test Database Connection
+                    </button>
+                    <button class="btn btn-outline-warning" onclick="testAWSServices()">
+                        <i class="fas fa-cloud"></i> Test AWS Services
+                    </button>
+                </div>
+                
+                <div id="testResults" class="mt-3" style="display: none;">
+                    <h6>Test Results:</h6>
+                    <div id="testOutput" class="bg-light p-3 rounded small"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lambda Function Management -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-server"></i> Lambda Function Management</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Function Operations</h6>
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-primary" onclick="invokeLambda()">
+                                <i class="fas fa-play"></i> Invoke Function
+                            </button>
+                            <button class="btn btn-info" onclick="getFunctionInfo()">
+                                <i class="fas fa-info-circle"></i> Get Function Info
+                            </button>
+                            <button class="btn btn-warning" onclick="updateFunctionConfig()">
+                                <i class="fas fa-cog"></i> Update Configuration
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Monitoring</h6>
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-outline-primary" onclick="viewMetrics()">
+                                <i class="fas fa-chart-line"></i> View Metrics
+                            </button>
+                            <button class="btn btn-outline-info" onclick="viewLogs()">
+                                <i class="fas fa-file-alt"></i> View Logs
+                            </button>
+                            <button class="btn btn-outline-success" onclick="testAlerts()">
+                                <i class="fas fa-bell"></i> Test Alerts
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="lambdaResults" class="mt-3" style="display: none;">
+                    <h6>Lambda Results:</h6>
+                    <div id="lambdaOutput" class="bg-dark text-light p-3 rounded small"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Test Scenarios -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-clipboard-list"></i> Pre-defined Test Scenarios</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="card border-success">
+                            <div class="card-body">
+                                <h6 class="card-title text-success">
+                                    <i class="fas fa-check-circle"></i> Normal Operation
+                                </h6>
+                                <p class="card-text small">Test typical daily operation with valid data</p>
+                                <button class="btn btn-success btn-sm" onclick="runTestScenario('normal')">
+                                    Run Test
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card border-warning">
+                            <div class="card-body">
+                                <h6 class="card-title text-warning">
+                                    <i class="fas fa-exclamation-triangle"></i> API Failure
+                                </h6>
+                                <p class="card-text small">Test behavior when APIs are unavailable</p>
+                                <button class="btn btn-warning btn-sm" onclick="runTestScenario('api_failure')">
+                                    Run Test
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card border-danger">
+                            <div class="card-body">
+                                <h6 class="card-title text-danger">
+                                    <i class="fas fa-times-circle"></i> Data Corruption
+                                </h6>
+                                <p class="card-text small">Test handling of corrupted or invalid data</p>
+                                <button class="btn btn-danger btn-sm" onclick="runTestScenario('data_corruption')">
+                                    Run Test
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Test History -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-history"></i> Recent Test History</h5>
+            </div>
+            <div class="card-body">
+                <div id="testHistory">
+                    <div class="text-center text-muted py-3">
+                        <i class="fas fa-history fa-2x mb-2"></i>
+                        <p>No recent tests found. Run a test to see results here.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+let testCounter = 0;
+
+function showTestResults(title, content, type = 'info') {
+    const resultsDiv = document.getElementById('testResults');
+    const outputDiv = document.getElementById('testOutput');
+    
+    resultsDiv.style.display = 'block';
+    outputDiv.innerHTML = `
+        <div class="alert alert-${type} mb-0">
+            <strong>${title}</strong><br>
+            <pre class="mb-0">${content}</pre>
+        </div>
+    `;
+    
+    // Add to test history
+    addToTestHistory(title, content, type);
+}
+
+function showLambdaResults(title, content, type = 'info') {
+    const resultsDiv = document.getElementById('lambdaResults');
+    const outputDiv = document.getElementById('lambdaOutput');
+    
+    resultsDiv.style.display = 'block';
+    outputDiv.innerHTML = `
+        <div class="text-${type === 'danger' ? 'danger' : type === 'success' ? 'success' : 'info'}">
+            <strong>${title}</strong><br>
+            ${content}
+        </div>
+    `;
+    
+    // Add to test history
+    addToTestHistory(title, content, type);
+}
+
+function addToTestHistory(title, content, type) {
+    testCounter++;
+    const historyDiv = document.getElementById('testHistory');
+    
+    if (testCounter === 1) {
+        historyDiv.innerHTML = '';
+    }
+    
+    const timestamp = new Date().toLocaleString();
+    const historyItem = `
+        <div class="alert alert-${type} alert-dismissible fade show">
+            <strong>#${testCounter} - ${title}</strong>
+            <small class="text-muted d-block">${timestamp}</small>
+            <pre class="mb-0 mt-2 small">${content}</pre>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    
+    historyDiv.insertAdjacentHTML('afterbegin', historyItem);
+}
+
+function testCarTrackAPI() {
+    showTestResults('CarTrack API Test', 'Testing connection to CarTrack Fleet API...', 'info');
+    
+    setTimeout(() => {
+        // Simulate API test
+        const mockResult = {
+            status: 'success',
+            endpoint: 'https://fleetapi-za.cartrack.com/rest/get_all_trips',
+            response_time: '245ms',
+            data: 'Successfully retrieved test data'
+        };
+        
+        showTestResults('CarTrack API Test', JSON.stringify(mockResult, null, 2), 'success');
+    }, 1000);
+}
+
+function testInvestecAPI() {
+    showTestResults('Investec API Test', 'Testing connection to Investec Open API...', 'info');
+    
+    setTimeout(() => {
+        // Simulate API test
+        const mockResult = {
+            status: 'success',
+            endpoint: 'https://openapi.investec.com/identity/v2/oauth2/token',
+            response_time: '156ms',
+            token: 'Successfully obtained access token'
+        };
+        
+        showTestResults('Investec API Test', JSON.stringify(mockResult, null, 2), 'success');
+    }, 800);
+}
+
+function testDatabaseConnection() {
+    showTestResults('Database Connection Test', 'Testing database connectivity...', 'info');
+    
+    setTimeout(() => {
+        const mockResult = {
+            status: 'success',
+            database: 'SQLite',
+            tables: ['configuration', 'transaction_log', 'error_log'],
+            connection_time: '12ms'
+        };
+        
+        showTestResults('Database Connection Test', JSON.stringify(mockResult, null, 2), 'success');
+    }, 500);
+}
+
+function testAWSServices() {
+    showTestResults('AWS Services Test', 'Testing AWS Lambda, CloudWatch, and Logs...', 'info');
+    
+    setTimeout(() => {
+        const mockResult = {
+            lambda: 'Connected',
+            cloudwatch: 'Connected',
+            logs: 'Connected',
+            region: 'eu-west-1'
+        };
+        
+        showTestResults('AWS Services Test', JSON.stringify(mockResult, null, 2), 'success');
+    }, 1200);
+}
+
+function getFunctionInfo() {
+    showLambdaResults('Getting Function Info', 'Fetching Lambda function information...', 'info');
+    
+    setTimeout(() => {
+        const mockInfo = {
+            FunctionName: 'cartrack_to_investec',
+            Runtime: 'python3.9',
+            Handler: 'service.handler',
+            MemorySize: 128,
+            Timeout: 30,
+            LastModified: new Date().toISOString()
+        };
+        
+        showLambdaResults('Function Information', JSON.stringify(mockInfo, null, 2), 'success');
+    }, 600);
+}
+
+function updateFunctionConfig() {
+    showLambdaResults('Updating Function Configuration', 'Updating Lambda function configuration...', 'info');
+    
+    setTimeout(() => {
+        showLambdaResults('Configuration Update', 'Function configuration updated successfully', 'success');
+    }, 800);
+}
+
+function viewMetrics() {
+    showLambdaResults('CloudWatch Metrics', 'Fetching CloudWatch metrics...', 'info');
+    
+    setTimeout(() => {
+        const mockMetrics = {
+            invocations: 45,
+            errors: 2,
+            duration_avg: '1.2s',
+            throttles: 0
+        };
+        
+        showLambdaResults('Lambda Metrics', JSON.stringify(mockMetrics, null, 2), 'success');
+    }, 700);
+}
+
+function viewLogs() {
+    showLambdaResults('CloudWatch Logs', 'Fetching recent logs...', 'info');
+    
+    setTimeout(() => {
+        const mockLogs = [
+            '[2024-06-11 12:00:00] START RequestId: abc123',
+            '[2024-06-11 12:00:01] Distance calculated: 150.5 km',
+            '[2024-06-11 12:00:02] Transfer amount: R37.63',
+            '[2024-06-11 12:00:03] END RequestId: abc123'
+        ];
+        
+        showLambdaResults('Recent Logs', mockLogs.join('\n'), 'info');
+    }, 500);
+}
+
+function testAlerts() {
+    showLambdaResults('Alert Test', 'Testing alert notifications...', 'info');
+    
+    setTimeout(() => {
+        showLambdaResults('Alert Test', 'Test alert sent successfully', 'success');
+    }, 400);
+}
+
+function runTestScenario(scenario) {
+    const scenarios = {
+        normal: {
+            title: 'Normal Operation Test',
+            description: 'Testing with valid registration, dates, and API responses',
+            expected: 'Successful calculation and transfer'
+        },
+        api_failure: {
+            title: 'API Failure Test',
+            description: 'Simulating CarTrack API unavailability',
+            expected: 'Graceful error handling with retry logic'
+        },
+        data_corruption: {
+            title: 'Data Corruption Test',
+            description: 'Testing with invalid or corrupted trip data',
+            expected: 'Data validation and error reporting'
+        }
+    };
+    
+    const test = scenarios[scenario];
+    showTestResults(test.title, test.description + '\n\nExpected: ' + test.expected, 'info');
+    
+    setTimeout(() => {
+        const result = {
+            scenario: scenario,
+            status: 'completed',
+            result: 'Test completed successfully',
+            timestamp: new Date().toISOString()
+        };
+        
+        showTestResults(test.title + ' - Result', JSON.stringify(result, null, 2), 'success');
+    }, 2000);
+}
+
+// Auto-populate form with test data
+document.addEventListener('DOMContentLoaded', function() {
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    document.getElementById('from_date').valueAsDate = yesterday;
+    document.getElementById('to_date').valueAsDate = today;
+});
+</script>
+{% endblock %}

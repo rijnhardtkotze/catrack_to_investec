@@ -1,0 +1,347 @@
+{% extends "base.html" %}
+
+{% block title %}Transaction #{{ transaction.id }} - Car Service Savings Admin{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="fas fa-exchange-alt"></i> Transaction #{{ transaction.id }}
+        <span class="badge {% if transaction.status == 'success' %}bg-success{% elif transaction.status == 'failed' %}bg-danger{% else %}bg-warning{% endif %} ms-2">
+            {{ transaction.status }}
+        </span>
+    </h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{{ url_for('transaction_list') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Back to List
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Transaction Details -->
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-info-circle"></i> Transaction Details</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <table class="table table-borderless">
+                            <tr>
+                                <th width="40%">Transaction ID:</th>
+                                <td><strong>#{{ transaction.id }}</strong></td>
+                            </tr>
+                            <tr>
+                                <th>Type:</th>
+                                <td>
+                                    <span class="badge bg-secondary">{{ transaction.transaction_type }}</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Status:</th>
+                                <td>
+                                    <span class="badge {% if transaction.status == 'success' %}bg-success{% elif transaction.status == 'failed' %}bg-danger{% else %}bg-warning{% endif %}">
+                                        {{ transaction.status }}
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Created:</th>
+                                <td>{{ transaction.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <table class="table table-borderless">
+                            <tr>
+                                <th width="40%">Amount:</th>
+                                <td>
+                                    {% if transaction.amount %}
+                                        <strong class="text-success">R{{ "%.2f"|format(transaction.amount) }}</strong>
+                                    {% else %}
+                                        <span class="text-muted">N/A</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Distance:</th>
+                                <td>
+                                    {% if transaction.distance %}
+                                        {{ "%.2f"|format(transaction.distance) }} km
+                                    {% else %}
+                                        <span class="text-muted">N/A</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Reference:</th>
+                                <td>
+                                    {% if transaction.reference %}
+                                        <code>{{ transaction.reference }}</code>
+                                    {% else %}
+                                        <span class="text-muted">No reference</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Account Information -->
+        {% if transaction.from_account or transaction.to_account %}
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-university"></i> Account Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>From Account</h6>
+                        {% if transaction.from_account %}
+                            <code>{{ transaction.from_account }}</code>
+                        {% else %}
+                            <span class="text-muted">Not specified</span>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <h6>To Account</h6>
+                        {% if transaction.to_account %}
+                            <code>{{ transaction.to_account }}</code>
+                        {% else %}
+                            <span class="text-muted">Not specified</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Error Information -->
+        {% if transaction.error_message %}
+        <div class="card mt-3">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0"><i class="fas fa-exclamation-triangle"></i> Error Details</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-danger">
+                    <h6>Error Message:</h6>
+                    <pre class="mb-0">{{ transaction.error_message }}</pre>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Raw Data -->
+        {% if transaction.raw_data %}
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-code"></i> Raw Data
+                    <button class="btn btn-sm btn-outline-secondary float-end" onclick="toggleRawData()">
+                        <i class="fas fa-eye"></i> Show/Hide
+                    </button>
+                </h5>
+            </div>
+            <div class="card-body" id="rawDataContainer" style="display: none;">
+                <pre class="bg-light p-3 rounded"><code>{{ transaction.raw_data }}</code></pre>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+        <!-- Quick Actions -->
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="fas fa-tools"></i> Quick Actions</h6>
+            </div>
+            <div class="card-body">
+                {% if transaction.status == 'failed' %}
+                    <button class="btn btn-warning btn-sm w-100 mb-2" onclick="retryTransaction()">
+                        <i class="fas fa-redo"></i> Retry Transaction
+                    </button>
+                {% endif %}
+                
+                <button class="btn btn-info btn-sm w-100 mb-2" onclick="exportTransaction()">
+                    <i class="fas fa-download"></i> Export Details
+                </button>
+                
+                {% if transaction.transaction_type == 'transfer' %}
+                    <button class="btn btn-secondary btn-sm w-100 mb-2" onclick="investigateTransfer()">
+                        <i class="fas fa-search"></i> Investigate Transfer
+                    </button>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Transaction Timeline -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="fas fa-clock"></i> Timeline</h6>
+            </div>
+            <div class="card-body">
+                <div class="timeline">
+                    <div class="timeline-item">
+                        <div class="timeline-marker bg-primary"></div>
+                        <div class="timeline-content">
+                            <h6 class="mb-1">Transaction Created</h6>
+                            <small class="text-muted">{{ transaction.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</small>
+                        </div>
+                    </div>
+                    
+                    {% if transaction.status == 'success' %}
+                    <div class="timeline-item">
+                        <div class="timeline-marker bg-success"></div>
+                        <div class="timeline-content">
+                            <h6 class="mb-1">Completed Successfully</h6>
+                            <small class="text-muted">{{ transaction.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</small>
+                        </div>
+                    </div>
+                    {% elif transaction.status == 'failed' %}
+                    <div class="timeline-item">
+                        <div class="timeline-marker bg-danger"></div>
+                        <div class="timeline-content">
+                            <h6 class="mb-1">Failed</h6>
+                            <small class="text-muted">{{ transaction.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</small>
+                            {% if transaction.error_message %}
+                                <br><small class="text-danger">{{ transaction.error_message[:50] }}...</small>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Related Information -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="fas fa-link"></i> Related Information</h6>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled">
+                    <li>
+                        <a href="{{ url_for('transaction_list', type=transaction.transaction_type) }}" class="text-decoration-none">
+                            <i class="fas fa-filter"></i> Similar transactions
+                        </a>
+                    </li>
+                    <li class="mt-2">
+                        <a href="{{ url_for('error_list') }}" class="text-decoration-none">
+                            <i class="fas fa-exclamation-triangle"></i> Recent errors
+                        </a>
+                    </li>
+                    <li class="mt-2">
+                        <a href="{{ url_for('config_list') }}" class="text-decoration-none">
+                            <i class="fas fa-cog"></i> Configuration settings
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Statistics -->
+        {% if transaction.amount and transaction.distance %}
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="fas fa-calculator"></i> Calculated Rate</h6>
+            </div>
+            <div class="card-body text-center">
+                <h4 class="text-primary">R{{ "%.4f"|format(transaction.amount / transaction.distance) }}</h4>
+                <small class="text-muted">per kilometer</small>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.timeline {
+    position: relative;
+    padding-left: 30px;
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.timeline-item:before {
+    content: '';
+    position: absolute;
+    left: -22px;
+    top: 8px;
+    width: 2px;
+    height: calc(100% + 20px);
+    background-color: #dee2e6;
+}
+
+.timeline-item:last-child:before {
+    display: none;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: -30px;
+    top: 0;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid white;
+    box-shadow: 0 0 0 2px #dee2e6;
+}
+</style>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleRawData() {
+    const container = document.getElementById('rawDataContainer');
+    container.style.display = container.style.display === 'none' ? 'block' : 'none';
+}
+
+function retryTransaction() {
+    if (confirm('Are you sure you want to retry this transaction?')) {
+        // This would need to be implemented based on your retry logic
+        alert('Retry functionality would be implemented here');
+    }
+}
+
+function exportTransaction() {
+    const transactionData = {
+        id: {{ transaction.id }},
+        type: '{{ transaction.transaction_type }}',
+        status: '{{ transaction.status }}',
+        amount: {{ transaction.amount or 'null' }},
+        distance: {{ transaction.distance or 'null' }},
+        from_account: '{{ transaction.from_account or "" }}',
+        to_account: '{{ transaction.to_account or "" }}',
+        reference: '{{ transaction.reference or "" }}',
+        error_message: '{{ transaction.error_message or "" }}',
+        created_at: '{{ transaction.created_at.isoformat() }}',
+        raw_data: {{ transaction.raw_data or 'null' }}
+    };
+    
+    const dataStr = JSON.stringify(transactionData, null, 2);
+    const dataBlob = new Blob([dataStr], {type: 'application/json'});
+    const url = URL.createObjectURL(dataBlob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `transaction_${transactionData.id}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+
+function investigateTransfer() {
+    // This would open investigation tools
+    alert('Investigation tools would be implemented here');
+}
+</script>
+{% endblock %}
