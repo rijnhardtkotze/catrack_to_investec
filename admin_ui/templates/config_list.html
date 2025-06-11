@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% block title %}Configuration - Car Service Savings Admin{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="fas fa-cog"></i> Configuration Settings</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{{ url_for('config_new') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Add Configuration
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                {% if configs %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Value</th>
+                                    <th>Description</th>
+                                    <th>Last Updated</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for config in configs %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ config.name }}</strong>
+                                        {% if 'password' in config.name.lower() or 'secret' in config.name.lower() or 'key' in config.name.lower() %}
+                                            <i class="fas fa-lock text-warning ms-1" title="Sensitive data"></i>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if 'password' in config.name.lower() or 'secret' in config.name.lower() or 'key' in config.name.lower() %}
+                                            {% if config.value %}
+                                                <span class="text-muted">••••••••</span>
+                                                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="togglePassword('{{ config.id }}')">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <span id="password-{{ config.id }}" style="display: none;">{{ config.value }}</span>
+                                            {% else %}
+                                                <span class="text-danger">Not set</span>
+                                            {% endif %}
+                                        {% else %}
+                                            <code>{{ config.value if config.value else '<empty>' }}</code>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">{{ config.description or 'No description' }}</small>
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">{{ config.updated_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{{ url_for('config_edit', config_id=config.id) }}" 
+                                               class="btn btn-outline-primary">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <button type="button" class="btn btn-outline-danger" 
+                                                    onclick="confirmDelete('{{ config.name }}', '{{ config.id }}')">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-cog fa-4x text-muted mb-3"></i>
+                        <h4 class="text-muted">No configurations found</h4>
+                        <p class="text-muted">Add your first configuration to get started.</p>
+                        <a href="{{ url_for('config_new') }}" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Add Configuration
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Security Notice -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i>
+            <strong>Security Notice:</strong> 
+            Sensitive configuration values (passwords, keys, secrets) are masked for security. 
+            Click the eye icon to temporarily reveal them. Always use secure methods to store credentials in production.
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the configuration "<strong id="configName"></strong>"?</p>
+                <p class="text-danger small">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    This action cannot be undone and may affect the Lambda function's operation.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteForm" method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function togglePassword(configId) {
+    const passwordSpan = document.getElementById('password-' + configId);
+    const button = passwordSpan.previousElementSibling;
+    const icon = button.querySelector('i');
+    
+    if (passwordSpan.style.display === 'none') {
+        passwordSpan.style.display = 'inline';
+        icon.className = 'fas fa-eye-slash';
+        
+        // Hide after 5 seconds
+        setTimeout(() => {
+            passwordSpan.style.display = 'none';
+            icon.className = 'fas fa-eye';
+        }, 5000);
+    } else {
+        passwordSpan.style.display = 'none';
+        icon.className = 'fas fa-eye';
+    }
+}
+
+function confirmDelete(configName, configId) {
+    document.getElementById('configName').textContent = configName;
+    document.getElementById('deleteForm').action = `/config/${configId}/delete`;
+    
+    const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    modal.show();
+}
+</script>
+{% endblock %}

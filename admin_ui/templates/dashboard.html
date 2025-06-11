@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Car Service Savings Admin{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="fas fa-tachometer-alt"></i> Dashboard</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <button type="button" class="btn btn-primary" id="invokeLambdaBtn" onclick="invokeLambda()">
+                <i class="fas fa-play"></i> Invoke Lambda
+            </button>
+        </div>
+        <div class="btn-group">
+            <button type="button" class="btn btn-outline-secondary" onclick="location.reload()">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row">
+    <div class="col-xl-3 col-md-6">
+        <div class="stat-card success">
+            <div class="d-flex">
+                <div class="flex-grow-1">
+                    <h4 class="mb-0">{{ total_transactions }}</h4>
+                    <p class="mb-0">Total Transactions</p>
+                </div>
+                <div class="align-self-center">
+                    <i class="fas fa-exchange-alt fa-2x"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6">
+        <div class="stat-card info">
+            <div class="d-flex">
+                <div class="flex-grow-1">
+                    <h4 class="mb-0">R{{ "%.2f"|format(monthly_savings) }}</h4>
+                    <p class="mb-0">Monthly Savings</p>
+                </div>
+                <div class="align-self-center">
+                    <i class="fas fa-piggy-bank fa-2x"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6">
+        <div class="stat-card {% if unresolved_errors > 0 %}warning{% else %}success{% endif %}">
+            <div class="d-flex">
+                <div class="flex-grow-1">
+                    <h4 class="mb-0">{{ unresolved_errors }}</h4>
+                    <p class="mb-0">Unresolved Errors</p>
+                </div>
+                <div class="align-self-center">
+                    <i class="fas fa-exclamation-triangle fa-2x"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6">
+        <div class="stat-card">
+            <div class="d-flex">
+                <div class="flex-grow-1">
+                    <h4 class="mb-0">{{ config_count }}</h4>
+                    <p class="mb-0">Configurations</p>
+                </div>
+                <div class="align-self-center">
+                    <i class="fas fa-cog fa-2x"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Transactions -->
+<div class="row mt-4">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-exchange-alt"></i> Recent Transactions</h5>
+                <a href="{{ url_for('transaction_list') }}" class="btn btn-sm btn-outline-primary">
+                    View All <i class="fas fa-arrow-right"></i>
+                </a>
+            </div>
+            <div class="card-body">
+                {% if recent_transactions %}
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Type</th>
+                                    <th>Status</th>
+                                    <th>Amount</th>
+                                    <th>Distance</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for transaction in recent_transactions %}
+                                <tr class="transaction-{{ transaction.status }}">
+                                    <td>
+                                        <span class="badge bg-secondary">{{ transaction.transaction_type }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge {% if transaction.status == 'success' %}bg-success{% elif transaction.status == 'failed' %}bg-danger{% else %}bg-warning{% endif %}">
+                                            {{ transaction.status }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if transaction.amount %}
+                                            R{{ "%.2f"|format(transaction.amount) }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if transaction.distance %}
+                                            {{ "%.1f"|format(transaction.distance) }}km
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">
+                                            {{ transaction.created_at.strftime('%Y-%m-%d %H:%M') }}
+                                        </small>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4 text-muted">
+                        <i class="fas fa-inbox fa-3x mb-3"></i>
+                        <p>No transactions found</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Errors -->
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-exclamation-triangle"></i> Recent Errors</h5>
+                <a href="{{ url_for('error_list') }}" class="btn btn-sm btn-outline-danger">
+                    View All <i class="fas fa-arrow-right"></i>
+                </a>
+            </div>
+            <div class="card-body">
+                {% if recent_errors %}
+                    {% for error in recent_errors %}
+                    <div class="alert alert-danger alert-sm mb-2">
+                        <div class="d-flex justify-content-between">
+                            <strong>{{ error.error_type }}</strong>
+                            <small>{{ error.created_at.strftime('%m-%d %H:%M') }}</small>
+                        </div>
+                        <p class="mb-1 small">{{ error.error_message[:100] }}{% if error.error_message|length > 100 %}...{% endif %}</p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="badge bg-{{ 'danger' if error.severity == 'ERROR' else 'warning' if error.severity == 'WARNING' else 'info' }}">
+                                {{ error.severity }}
+                            </span>
+                            <a href="{{ url_for('error_detail', error_id=error.id) }}" class="btn btn-sm btn-outline-danger">
+                                Details
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center py-4 text-muted">
+                        <i class="fas fa-check-circle fa-3x mb-3 text-success"></i>
+                        <p>No recent errors</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lambda Function Status -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-server"></i> Lambda Function Status</h5>
+            </div>
+            <div class="card-body">
+                <div id="lambdaLogs">
+                    <div class="d-flex justify-content-center">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Load Lambda logs
+function loadLambdaLogs() {
+    fetch('/api/lambda/logs')
+        .then(response => response.json())
+        .then(data => {
+            const logsContainer = document.getElementById('lambdaLogs');
+            if (data.error) {
+                logsContainer.innerHTML = `
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i> 
+                        Unable to load Lambda logs: ${data.error}
+                    </div>
+                `;
+            } else if (data.length === 0) {
+                logsContainer.innerHTML = `
+                    <div class="text-center text-muted">
+                        <i class="fas fa-file-alt fa-2x mb-2"></i>
+                        <p>No recent logs found</p>
+                    </div>
+                `;
+            } else {
+                let logsHtml = '<div class="table-responsive">';
+                logsHtml += '<table class="table table-sm table-striped">';
+                logsHtml += '<thead><tr><th>Timestamp</th><th>Message</th></tr></thead>';
+                logsHtml += '<tbody>';
+                
+                data.forEach(log => {
+                    logsHtml += `
+                        <tr>
+                            <td class="text-nowrap">
+                                <small class="text-muted">${new Date(log.timestamp).toLocaleString()}</small>
+                            </td>
+                            <td>
+                                <code class="small">${log.message}</code>
+                            </td>
+                        </tr>
+                    `;
+                });
+                
+                logsHtml += '</tbody></table></div>';
+                logsContainer.innerHTML = logsHtml;
+            }
+        })
+        .catch(error => {
+            document.getElementById('lambdaLogs').innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-times-circle"></i> 
+                    Error loading logs: ${error.message}
+                </div>
+            `;
+        });
+}
+
+// Load logs on page load
+document.addEventListener('DOMContentLoaded', loadLambdaLogs);
+</script>
+{% endblock %}
