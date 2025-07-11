@@ -79,7 +79,7 @@ class InvestecAPIClient:
             except requests.exceptions.RequestException as e:
                 logger.error(f"Auth token attempt {attempt + 1} failed: {e}")
                 if attempt == 2:  # Last attempt
-                    raise APIException(f"Failed to get auth token after 3 attempts: {e}")
+                    raise APIException(f"Failed to get auth token after 3 attempts: {e}") from e
                 time.sleep(2 ** attempt)  # Exponential backoff
 
     def is_token_expired(self) -> bool:
