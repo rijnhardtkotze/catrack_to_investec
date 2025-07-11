@@ -69,7 +69,8 @@ def test_validation():
         
         try:
             validate_environment()
-            assert False, "Should have raised ValueError for missing env vars"
+-            assert False, "Should have raised ValueError for missing env vars"
++            raise AssertionError("Should have raised ValueError for missing env vars")
         except ValueError as e:
             print(f"✅ Correctly caught missing env vars: {e}")
         
