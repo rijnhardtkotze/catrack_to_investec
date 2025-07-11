@@ -80,7 +80,7 @@ def test_validation():
         os.environ['rate_per_km'] = 'invalid'
         try:
             validate_environment()
-            assert False, "Should have raised ValueError for invalid rate_per_km"
+            raise AssertionError("Should have raised ValueError for invalid rate_per_km")
         except ValueError as e:
             print(f"✅ Correctly caught invalid rate_per_km: {e}")
         
