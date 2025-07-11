@@ -17,12 +17,11 @@ aws_access_key_id:
 aws_secret_access_key:
 
 dist_directory: dist
-# timeout: 15
-# memory_size: 512
+timeout: 30
+memory_size: 256
 # concurrency: 500
-#
 
-# Experimental Environment variables
+# Environment variables
 environment_variables:
     investec_client_id: ""
     investec_secret_key: ""
@@ -31,14 +30,16 @@ environment_variables:
     investec_to_account_id: ""
     cartrack_username: ""
     cartrack_password: ""
-    rate_per_km: "0.25"
+    car_registration: ""  # Add your car registration here
+    rate_per_km: "0.25"   # Rate per kilometer in your currency
 
 # If `tags` is uncommented then tags will be set at creation or update
 # time.  During an update all other tags will be removed except the tags
 # listed here.
-#tags:
-#    tag_1: foo
-#    tag_2: bar
+tags:
+    project: cartrack-investec
+    purpose: automatic-car-service-savings
+    environment: production
 
 # Build options
 build:
