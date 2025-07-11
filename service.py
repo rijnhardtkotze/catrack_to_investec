@@ -19,6 +19,12 @@ class APIException(Exception):
 
 class InvestecAPIClient:
     def __init__(self, client_id: str, secret_key: str, api_key: str):
+        """
+        Initialize the InvestecAPIClient with required credentials.
+        
+        Raises:
+            ValueError: If any of client_id, secret_key, or api_key is missing.
+        """
         if not all([client_id, secret_key, api_key]):
             raise ValueError("Client ID, Secret Key and API Key are all required")
         
@@ -31,7 +37,12 @@ class InvestecAPIClient:
         self.token_expires_at = None
 
     def get_auth_token(self) -> None:
-        """Get authentication token from Investec API with retry logic"""
+        """
+        Obtains an OAuth2 authentication token from the Investec API, updating session headers and handling retries with exponential backoff on failure.
+        
+        Raises:
+            APIException: If the token cannot be obtained after three attempts.
+        """
         headers = {"x-api-key": self.api_key}
         
         for attempt in range(3):
@@ -72,18 +83,30 @@ class InvestecAPIClient:
                 time.sleep(2 ** attempt)  # Exponential backoff
 
     def is_token_expired(self) -> bool:
-        """Check if the current token is expired"""
+        """
+        Determine whether the current authentication token is expired or will expire within the next five minutes.
+        
+        Returns:
+            bool: True if the token is missing or expiring soon; otherwise, False.
+        """
         if not self.token_expires_at:
             return True
         return time.time() >= self.token_expires_at - 300  # Refresh 5 minutes before expiry
 
     def ensure_valid_token(self) -> None:
-        """Ensure we have a valid token, refresh if necessary"""
+        """
+        Ensures that a valid authentication token is available, refreshing it if missing or expired.
+        """
         if not self.token or self.is_token_expired():
             self.get_auth_token()
 
     def get_accounts(self) -> None:
-        """Get accounts from Investec API"""
+        """
+        Retrieves and stores the list of accounts from the Investec API.
+        
+        Raises:
+            APIException: If the API request fails or returns an error.
+        """
         self.ensure_valid_token()
         
         try:
@@ -103,7 +126,23 @@ class InvestecAPIClient:
 
     def transfer(self, from_account: str, to_account: str, amount: float, 
                 from_reference: str, to_reference: str) -> Dict[str, Any]:
-        """Transfer money between accounts"""
+        """
+                Transfers a specified amount of money from one Investec account to another.
+                
+                Parameters:
+                    from_account (str): The source account ID.
+                    to_account (str): The destination account ID.
+                    amount (float): The amount to transfer; must be positive.
+                    from_reference (str): Reference for the sender.
+                    to_reference (str): Reference for the recipient.
+                
+                Returns:
+                    Dict[str, Any]: The API response containing transfer details.
+                
+                Raises:
+                    ValueError: If the transfer amount is not positive.
+                    APIException: If the transfer request fails.
+                """
         self.ensure_valid_token()
         
         if amount <= 0:
@@ -141,6 +180,12 @@ class InvestecAPIClient:
 
 class CarTrackAPIClient:
     def __init__(self, username: str, api_key: str):
+        """
+        Initialize the CarTrackAPIClient with the provided username and API key.
+        
+        Raises:
+            ValueError: If either the username or API key is missing.
+        """
         if not all([username, api_key]):
             raise ValueError("Username and API Key are both required")
         
@@ -151,7 +196,13 @@ class CarTrackAPIClient:
         self.distance = 0
 
     def get_trips(self, registration: str, from_date: str, to_date: str) -> None:
-        """Get trips from CarTrack API with retry logic"""
+        """
+        Fetches trip data for a specific vehicle registration from the CarTrack API within a given date range, retrying up to three times on failure.
+        
+        Raises:
+            ValueError: If any of the required parameters (registration, from_date, to_date) are missing.
+            APIException: If the API request fails after three attempts.
+        """
         if not all([registration, from_date, to_date]):
             raise ValueError("Registration, from_date and to_date are all required")
             
@@ -181,7 +232,19 @@ class CarTrackAPIClient:
                 time.sleep(2 ** attempt)  # Exponential backoff
 
     def calculate_distance(self, registration: str, from_date: str, to_date: str) -> float:
-        """Calculate total distance from trips"""
+        """
+        Calculates the total distance traveled by a vehicle within a specified date range.
+        
+        Retrieves trip data for the given vehicle registration and date range, sums the trip distances (in meters), converts the total to kilometers, and returns the result. If no trips are found, returns 0.
+         
+        Parameters:
+            registration (str): The vehicle registration identifier.
+            from_date (str): The start date in "YYYY-MM-DD" format.
+            to_date (str): The end date in "YYYY-MM-DD" format.
+        
+        Returns:
+            float: The total distance traveled in kilometers.
+        """
         self.get_trips(registration, from_date, to_date)
         
         if not self.trips:
@@ -201,7 +264,12 @@ class CarTrackAPIClient:
 
 
 def get_date_range() -> tuple:
-    """Get yesterday's date range for automatic date selection"""
+    """
+    Return a tuple containing yesterday's date as both the start and end date in "YYYY-MM-DD" format.
+    
+    Returns:
+        tuple: (from_date, to_date) where both are yesterday's date strings.
+    """
     yesterday = datetime.now() - timedelta(days=1)
     from_date = yesterday.strftime("%Y-%m-%d")
     to_date = yesterday.strftime("%Y-%m-%d")
@@ -209,7 +277,14 @@ def get_date_range() -> tuple:
 
 
 def validate_environment() -> Dict[str, str]:
-    """Validate that all required environment variables are set"""
+    """
+    Validates the presence and correctness of required environment variables for API operations.
+    
+    Checks that all necessary environment variables are set and that `rate_per_km` is a valid number. Raises a ValueError if any variables are missing or if `rate_per_km` is not numeric.
+    
+    Returns:
+        dict: A dictionary containing the validated environment variables and their values.
+    """
     required_vars = [
         "investec_client_id",
         "investec_secret_key", 
@@ -245,7 +320,18 @@ def validate_environment() -> Dict[str, str]:
 
 
 def handler(event, context):
-    """AWS Lambda handler function"""
+    """
+    AWS Lambda entry point for automating money transfers based on vehicle trip distances.
+    
+    This function validates environment variables, determines the date range and car registration (with optional overrides from the event), calculates the total distance traveled using the CarTrack API, and, if distance is nonzero, calculates the transfer amount and performs a transfer between Investec accounts. Returns a JSON response with transfer details on success, or an error message on failure.
+    
+    Parameters:
+        event (dict): Lambda event payload, optionally containing 'from_date', 'to_date', and 'car_registration'.
+        context: Lambda context object (unused).
+    
+    Returns:
+        dict: JSON-serializable response with HTTP status code and result or error details.
+    """
     try:
         logger.info("Starting CarTrack to Investec transfer process")
         
