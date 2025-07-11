@@ -313,9 +313,8 @@ def validate_environment() -> Dict[str, str]:
     # Validate numeric values
     try:
         float(env_vars["rate_per_km"])
-    except ValueError:
-        raise ValueError("rate_per_km must be a valid number")
-    
+    except ValueError as e:
+        raise ValueError("rate_per_km must be a valid number") from e
     return env_vars
 
 
