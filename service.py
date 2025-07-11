@@ -228,7 +228,7 @@ class CarTrackAPIClient:
             except requests.exceptions.RequestException as e:
                 logger.error(f"Get trips attempt {attempt + 1} failed: {e}")
                 if attempt == 2:  # Last attempt
-                    raise APIException(f"Failed to get trips after 3 attempts: {e}")
+                    raise APIException(f"Failed to get trips after 3 attempts: {e}") from e
                 time.sleep(2 ** attempt)  # Exponential backoff
 
     def calculate_distance(self, registration: str, from_date: str, to_date: str) -> float:
