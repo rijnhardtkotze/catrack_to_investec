@@ -1,4 +1,6 @@
+import logging
 from django.shortcuts import render
+from django.db.models import Sum, Count
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -12,6 +14,8 @@ from .serializers import (
     InvestecAccountSerializer, APIConfigurationSerializer
 )
 from .services import CarTrackToInvestecService
+
+logger = logging.getLogger(__name__)
 
 
 class CarRegistrationViewSet(viewsets.ModelViewSet):
@@ -63,9 +67,25 @@ class TransferViewSet(viewsets.ModelViewSet):
             service = CarTrackToInvestecService()
             result = service.process_distance_transfer(registration_number, from_date, to_date)
             return Response(result, status=status.HTTP_200_OK)
-        except Exception as e:
+        except ValueError as e:
+            # Handle validation errors (bad input, missing objects)
+            logger.warning(f"Validation error in transfer processing: {e}")
             return Response(
-                {'error': str(e)},
+                {'error': f'Invalid input: {str(e)}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except ConnectionError as e:
+            # Handle API connection errors
+            logger.error(f"Connection error during transfer processing: {e}")
+            return Response(
+                {'error': f'Connection error: {str(e)}'},
+                status=status.HTTP_502_BAD_GATEWAY
+            )
+        except Exception as e:
+            # Handle unexpected errors
+            logger.error(f"Unexpected error in transfer processing: {e}")
+            return Response(
+                {'error': f'Unexpected error: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
     
@@ -83,16 +103,24 @@ class TransferViewSet(viewsets.ModelViewSet):
         if end_date:
             transfers = transfers.filter(transfer_date__lte=end_date)
         
-        total_amount = sum(t.amount for t in transfers)
-        total_distance = sum(t.distance_km for t in transfers)
+        # Use database aggregation for better performance
+        aggregates = transfers.aggregate(
+            total_amount=Sum('amount'),
+            total_distance=Sum('distance_km'),
+            total_transfers=Count('id')
+        )
+        
+        # Get status counts
+        status_counts = transfers.values('status').annotate(count=Count('id'))
+        status_dict = {item['status']: item['count'] for item in status_counts}
         
         return Response({
-            'total_transfers': transfers.count(),
-            'total_amount': total_amount,
-            'total_distance_km': total_distance,
-            'completed_transfers': transfers.filter(status='completed').count(),
-            'pending_transfers': transfers.filter(status='pending').count(),
-            'failed_transfers': transfers.filter(status='failed').count(),
+            'total_transfers': aggregates['total_transfers'] or 0,
+            'total_amount': aggregates['total_amount'] or 0,
+            'total_distance_km': aggregates['total_distance'] or 0,
+            'completed_transfers': status_dict.get('completed', 0),
+            'pending_transfers': status_dict.get('pending', 0),
+            'failed_transfers': status_dict.get('failed', 0),
         })
 
 

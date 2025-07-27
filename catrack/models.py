@@ -1,5 +1,6 @@
 from django.db import models
 from django.utils import timezone
+from django.contrib.auth.hashers import make_password, check_password
 
 
 class CarRegistration(models.Model):
@@ -85,9 +86,19 @@ class APIConfiguration(models.Model):
     secret_key = models.CharField(max_length=200, blank=True)
     api_key = models.CharField(max_length=200, blank=True)
     username = models.CharField(max_length=100, blank=True)
-    password = models.CharField(max_length=200, blank=True)
+    password = models.CharField(max_length=200, blank=True)  # Stores hashed password
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    
+    def save(self, *args, **kwargs):
+        # Hash password if it's not already hashed and not empty
+        if self.password and not self.password.startswith('pbkdf2_'):
+            self.password = make_password(self.password)
+        super().save(*args, **kwargs)
+    
+    def check_password(self, raw_password):
+        """Check if the raw password matches the stored hashed password"""
+        return check_password(raw_password, self.password)
     
     def __str__(self):
         return f"{self.api_type.title()} - {self.name}"

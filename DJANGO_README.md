@@ -4,25 +4,57 @@ This document describes the Django API and admin interface setup for the CarTrac
 
 ## Quick Start
 
-### 1. Install Dependencies
+### 1. Environment Setup
+
+First, create a `.env` file based on the example:
+
+```bash
+cp .env.example .env
+```
+
+Edit the `.env` file and set your environment variables:
+
+```bash
+# Required security settings
+DJANGO_SECRET_KEY=your-unique-secret-key-here
+DJANGO_DEBUG=False  # Set to True only for development
+DJANGO_ALLOWED_HOSTS=your-domain.com,localhost
+
+# Additional settings as needed
+```
+
+**⚠️ Security Notice**: Never commit the `.env` file to version control. It contains sensitive configuration data.
+
+### 2. Install Dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Run Migrations
+### 3. Run Migrations
 ```bash
 python manage.py migrate
 ```
 
-### 3. Create Superuser
+### 4. Create Superuser
 ```bash
 python manage.py createsuperuser
 ```
 
-### 4. Start Development Server
+### 5. Start Development Server
 ```bash
 python manage.py runserver
 ```
+
+## Security Features
+
+This implementation includes several security improvements:
+
+- **Environment-based Configuration**: Sensitive settings like `SECRET_KEY`, `DEBUG`, and `ALLOWED_HOSTS` are configurable via environment variables
+- **Password Hashing**: API passwords in the `APIConfiguration` model are automatically hashed using Django's built-in password hashing
+- **Sensitive Data Protection**: API keys and passwords are masked in admin list views and API responses
+- **Input Validation**: Comprehensive validation for dates, timestamps, and API inputs
+- **Error Handling**: Specific exception handling with appropriate HTTP status codes
+- **Database Transactions**: Transfer operations use database transactions for data consistency
 
 ## Admin Interface
 
