@@ -24,15 +24,15 @@ class CarTrackService:
         if not config:
             raise ValueError("No active CarTrack API configuration found")
         
-        # Use the stored password if available, otherwise fall back to plain password
+        # Ensure plaintext passwords are securely handled for API authentication
         password = config.password
         if password and password.startswith('pbkdf2_'):
-            # For hashed passwords, we'd need to store plain passwords separately
-            # or implement a different approach for API authentication
-            logger.warning("Using hashed password for API - consider secure credential storage")
+            # Raise an error if a hashed password is detected
+            raise ValueError("Hashed password detected. Plaintext password is required for API authentication.")
         
         self.client = service.CarTrackAPIClient(
             username=config.username,
+            password=password,  # Ensure plaintext password is used
             api_key=config.api_key
         )
     
