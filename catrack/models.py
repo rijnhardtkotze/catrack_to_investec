@@ -86,19 +86,29 @@ class APIConfiguration(models.Model):
     secret_key = models.CharField(max_length=200, blank=True)
     api_key = models.CharField(max_length=200, blank=True)
     username = models.CharField(max_length=100, blank=True)
-    password = models.CharField(max_length=200, blank=True)  # Stores hashed password
+    password = models.CharField(max_length=200, blank=True)  # Stores password (hashed for admin users, plain for APIs)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     
     def save(self, *args, **kwargs):
-        # Hash password if it's not already hashed and not empty
-        if self.password and not self.password.startswith('pbkdf2_'):
+        # Only hash passwords for admin/web authentication, not for API clients
+        # CarTrack API requires plaintext passwords for authentication
+        if self.password and self.api_type != 'cartrack' and not self.password.startswith('pbkdf2_'):
             self.password = make_password(self.password)
         super().save(*args, **kwargs)
     
     def check_password(self, raw_password):
-        """Check if the raw password matches the stored hashed password"""
-        return check_password(raw_password, self.password)
+        """Check if the raw password matches the stored password"""
+        if self.api_type == 'cartrack':
+            # For CarTrack, passwords are stored in plaintext for API authentication
+            return self.password == raw_password
+        else:
+            # For other APIs, use Django's password checking
+            return check_password(raw_password, self.password)
+    
+    def get_password(self):
+        """Get the password for API authentication"""
+        return self.password
     
     def __str__(self):
         return f"{self.api_type.title()} - {self.name}"

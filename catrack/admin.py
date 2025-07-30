@@ -58,8 +58,26 @@ class APIConfigurationAdmin(admin.ModelAdmin):
         # Make password fields use password input
         if 'secret_key' in form.base_fields:
             form.base_fields['secret_key'].widget.attrs['type'] = 'password'
+            form.base_fields['secret_key'].help_text = 'This field will be masked for security'
         if 'api_key' in form.base_fields:
             form.base_fields['api_key'].widget.attrs['type'] = 'password'
+            form.base_fields['api_key'].help_text = 'This field will be masked for security'
         if 'password' in form.base_fields:
             form.base_fields['password'].widget.attrs['type'] = 'password'
+            if obj and obj.api_type == 'cartrack':
+                form.base_fields['password'].help_text = 'CarTrack passwords are stored in plaintext for API authentication'
+            else:
+                form.base_fields['password'].help_text = 'Passwords are automatically hashed for security'
         return form
+    
+    def save_model(self, request, obj, form, change):
+        """Override to add logging for security-sensitive changes"""
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        if change:
+            logger.info(f"API Configuration '{obj.name}' updated by user '{request.user.username}'")
+        else:
+            logger.info(f"New API Configuration '{obj.name}' created by user '{request.user.username}'")
+        
+        super().save_model(request, obj, form, change)

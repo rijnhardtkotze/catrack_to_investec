@@ -20,19 +20,17 @@ class CarTrackService:
     """Service class to handle CarTrack API interactions"""
     
     def __init__(self):
-        config = APIConfiguration.objects.filter(api_type='cartrack', is_active=True).first()
-        if not config:
+        try:
+            config = APIConfiguration.objects.get(api_type='cartrack', is_active=True)
+        except APIConfiguration.DoesNotExist:
             raise ValueError("No active CarTrack API configuration found")
-        
-        # Ensure plaintext passwords are securely handled for API authentication
-        password = config.password
-        if password and password.startswith('pbkdf2_'):
-            # Raise an error if a hashed password is detected
-            raise ValueError("Hashed password detected. Plaintext password is required for API authentication.")
+        except APIConfiguration.MultipleObjectsReturned:
+            config = APIConfiguration.objects.filter(api_type='cartrack', is_active=True).first()
+            logger.warning("Multiple active CarTrack configurations found, using the first one")
         
         self.client = service.CarTrackAPIClient(
             username=config.username,
-            password=password,  # Ensure plaintext password is used
+            password=config.get_password(),
             api_key=config.api_key
         )
     
@@ -45,8 +43,25 @@ class CarTrackService:
         
         self.client.get_trips(registration_number, from_date, to_date)
         
+        # Validate API response
+        if not hasattr(self.client, 'trips') or self.client.trips is None:
+            raise ValueError("No trips data received from CarTrack API")
+        
+        if not isinstance(self.client.trips, list):
+            raise ValueError("Invalid trips data format received from CarTrack API")
+        
         if self.client.trips:
             for trip_data in self.client.trips:
+                # Validate trip data structure
+                if not isinstance(trip_data, dict):
+                    logger.warning(f"Invalid trip data structure: {trip_data}")
+                    continue
+                    
+                required_fields = ['start_ts', 'end_ts', 'trip_distance']
+                if not all(field in trip_data for field in required_fields):
+                    logger.warning(f"Missing required fields in trip data: {trip_data}")
+                    continue
+                
                 # Convert timestamps with validation
                 try:
                     start_ts_raw = trip_data.get('start_ts')
@@ -68,9 +83,19 @@ class CarTrackService:
                     logger.error(f"Invalid timestamp format in trip data: {e}")
                     continue
                 
+                # Validate trip distance
+                try:
+                    trip_distance = int(trip_data.get('trip_distance', 0))
+                    if trip_distance < 0:
+                        logger.warning(f"Negative trip distance found: {trip_distance}")
+                        continue
+                except (ValueError, TypeError) as e:
+                    logger.error(f"Invalid trip distance format: {e}")
+                    continue
+                
                 Trip.objects.get_or_create(
                     car_registration=car_reg,
-                    trip_distance=int(trip_data.get('trip_distance', 0)),
+                    trip_distance=trip_distance,
                     start_timestamp=start_ts,
                     end_timestamp=end_ts,
                     defaults={
@@ -90,9 +115,13 @@ class InvestecService:
     """Service class to handle Investec API interactions"""
     
     def __init__(self):
-        config = APIConfiguration.objects.filter(api_type='investec', is_active=True).first()
-        if not config:
+        try:
+            config = APIConfiguration.objects.get(api_type='investec', is_active=True)
+        except APIConfiguration.DoesNotExist:
             raise ValueError("No active Investec API configuration found")
+        except APIConfiguration.MultipleObjectsReturned:
+            config = APIConfiguration.objects.filter(api_type='investec', is_active=True).first()
+            logger.warning("Multiple active Investec configurations found, using the first one")
         
         self.client = service.InvestecAPIClient(
             client_id=config.client_id,
@@ -153,11 +182,21 @@ class InvestecService:
                 transfer.status = 'completed'
                 transfer.save()
                 
+            except (ConnectionError, TimeoutError) as e:
+                transfer.status = 'failed'
+                transfer.save()
+                logger.error(f"Network error during transfer API call: {e}")
+                raise ConnectionError(f"Network error during transfer: {str(e)}")
+            except ValueError as e:
+                transfer.status = 'failed'
+                transfer.save()
+                logger.error(f"Invalid data for transfer API call: {e}")
+                raise ValueError(f"Invalid transfer data: {str(e)}")
             except Exception as e:
                 transfer.status = 'failed'
                 transfer.save()
-                logger.error(f"Transfer API call failed: {e}")
-                raise e
+                logger.error(f"Unexpected error during transfer API call: {e}")
+                raise RuntimeError(f"Transfer processing failed: {str(e)}")
             
             return transfer
 

@@ -62,10 +62,11 @@ class InvestecAPIClient(object):
 
 
 class CarTrackAPIClient(object):
-    def __init__(self, username: str, api_key: str):
-        if not username or not api_key or not api_key:
-            raise ValueError("Username and API Key is needed")
+    def __init__(self, username: str, password: str, api_key: str):
+        if not username or not password or not api_key:
+            raise ValueError("Username, password and API Key is needed")
         self.username = username
+        self.password = password
         self.api_key = api_key
         self.session = requests.Session()
         self.trips = None
@@ -80,7 +81,7 @@ class CarTrackAPIClient(object):
                     "start_ts": from_date,
                     "end_ts": to_date
                 },
-                auth=(self.username, self.api_key)
+                auth=(self.username, self.password)
             )
             self.trips = response.json()
             response.raise_for_status()
@@ -101,7 +102,8 @@ def handler(event, context):
                                  os.getenv("investec_api_key"))
 
     cartrack = CarTrackAPIClient(os.getenv("cartrack_username"),
-                                 os.getenv("cartrack_password"))
+                                 os.getenv("cartrack_password"),
+                                 os.getenv("cartrack_api_key"))
 
     cartrack.calculate_distance("DV77FCGP", "2022-03-31", "2022-04-01")
 

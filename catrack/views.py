@@ -81,11 +81,18 @@ class TransferViewSet(viewsets.ModelViewSet):
                 {'error': f'Connection error: {str(e)}'},
                 status=status.HTTP_502_BAD_GATEWAY
             )
+        except RuntimeError as e:
+            # Handle service processing errors
+            logger.error(f"Service processing error: {e}")
+            return Response(
+                {'error': f'Processing error: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
         except Exception as e:
-            # Handle unexpected errors
+            # Handle any remaining unexpected errors
             logger.error(f"Unexpected error in transfer processing: {e}")
             return Response(
-                {'error': f'Unexpected error: {str(e)}'},
+                {'error': 'An unexpected error occurred. Please try again or contact support.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
     
